@@ -3,25 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Client\Request;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
 class AuthController extends Controller
 {
     //user register
-    public function register(Request $request)
+    public function userRegister(Request $request)
     {
         $request->validate([
             'name' => 'required|string',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'phone' => 'required|string',
-            'address' => 'required|string',
         ]);
 
         $data = $request->all();
-        $data['password'] = bcrypt($data['password']);
+        $data['password'] = Hash::make($data['password']);
         $data['roles'] = 'user';
 
         $user = User::create($data);
@@ -80,7 +79,6 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'phone' => 'required|string',
-            'address' => 'required|string',
             'restaurant_name' => 'required|string',
             'restaurant_address' => 'required|string',
             'photo' => 'required|image',
@@ -88,10 +86,19 @@ class AuthController extends Controller
         ]);
 
         $data = $request->all();
-        $data['password'] = bcrypt($data['password']);
+        $data['password'] = Hash::make($data['password']);
         $data['roles'] = 'restaurant';
 
         $user = User::create($data);
+
+        //check if photo is uploaded
+        if ($request->hasFile('photo')) {
+            $photo = $request->file('photo');
+            $photo_name = time() . '.' . $photo->getClientOriginalExtension();
+            $photo->move(public_path('images'), $photo_name);
+            $user->photo = $photo_name;
+            $user->save();
+        }
 
         return response()->json([
             'status' => 'success',
@@ -118,10 +125,49 @@ class AuthController extends Controller
 
         $user = User::create($data);
 
+         //check if photo is uploaded
+         if ($request->hasFile('photo')) {
+            $photo = $request->file('photo');
+            $photo_name = time() . '.' . $photo->getClientOriginalExtension();
+            $photo->move(public_path('images'), $photo_name);
+            $user->photo = $photo_name;
+            $user->save();
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => 'Driver registered successfully',
             'data' => $user
+        ]);
+    }
+
+    //update latlong user
+    public function updateLatlong(Request $request)
+    {
+        $request->validate([
+            'latlong' => 'required|string',
+        ]);
+
+        $user = $request->user();
+        $user->latlong = $request->latlong;
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Latlong updated successfully',
+            'data' => $user
+        ]);
+    }
+
+    //get all restaurant
+    public function getRestaurant()
+    {
+        $restaurant = User::where('roles', 'restaurant')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Get all restaurant',
+            'data' => $restaurant
         ]);
     }
 }
